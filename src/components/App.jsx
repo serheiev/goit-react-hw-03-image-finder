@@ -6,6 +6,7 @@ import { Button } from './Button/Button';
 import { Modal } from './Modal/Modal';
 import { Loader } from './Loader/Loader';
 
+const errorMessage = 'oops, no images';
 export class App extends Component {
   state = {
     images: [],
@@ -26,9 +27,12 @@ export class App extends Component {
   }
 
   fetchGallery = async (query, page) => {
-    const { hits } = await fetchApi(query, page);
-    this.setState(() => ({ isLoading: true }));
     try {
+      this.setState(() => ({ isLoading: true }));
+      const { hits } = await fetchApi(query, page);
+      if (hits.length === 0) {
+        throw new Error(errorMessage);
+      }
       if (page === 1) {
         this.setState(() => ({ images: hits }));
       } else {
@@ -36,16 +40,15 @@ export class App extends Component {
           images: [...prevState.images, ...hits],
         }));
       }
-    } catch (error) {
-      this.setState({ error: error.message });
-      console.error(Error);
+    } catch {
+      this.setState({ error: errorMessage });
     } finally {
       this.setState({ isLoading: false });
     }
   };
 
   chengeNameSubmit = query => {
-    this.setState(() => ({ query, page: 1 }));
+    this.setState(() => ({ query, page: 1, error: null }));
   };
 
   loadMore = () => {
@@ -64,20 +67,16 @@ export class App extends Component {
     const {
       images,
       isLoading,
+      error,
       modal: { isOpen, src, alt },
     } = this.state;
-
     return (
       <>
         <Searchbar onSubmit={this.chengeNameSubmit} />
-        {/* {isLoading ? (
-          <Loader />
-        ) : (
-          <ImageGallery images={images} openModal={this.openModal} />
-        )} */}
+        {error && <div>{errorMessage}</div>}
         {isLoading && <Loader />}
-        <ImageGallery images={images} openModal={this.openModal} />
-        {images.length > 0 && images.length % 12 === 0 && (
+        {!error && <ImageGallery images={images} openModal={this.openModal} />}
+        {images.length > 0 && images.length % 12 === 0 && !error && (
           <Button showMore={this.loadMore} />
         )}
         {isOpen && <Modal closeModal={this.closeModal} src={src} alt={alt} />}
